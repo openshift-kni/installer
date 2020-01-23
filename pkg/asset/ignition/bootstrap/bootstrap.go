@@ -275,7 +275,7 @@ func (a *Bootstrap) addStorageFiles(base string, uri string, templateData *boots
 
 	var mode int
 	appendToFile := false
-	if path.Base(path.Dir(uri)) == "bin" {
+	if path.Base(path.Dir(uri)) == "bin" || filename == "30-local-dns-prepender" {
 		mode = 0555
 	} else if filename == "motd" {
 		mode = 0644
