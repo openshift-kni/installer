@@ -9,20 +9,49 @@ func init() {
 	registerFactory("redfish", newRedfishAccessDetails)
 	registerFactory("redfish+http", newRedfishAccessDetails)
 	registerFactory("redfish+https", newRedfishAccessDetails)
+	registerFactory("redfish-virtualmedia", newRedfishVirtualMediaAccessDetails)
+	registerFactory("ilo5-virtualmedia", newRedfishVirtualMediaAccessDetails)
+	registerFactory("idrac-virtualmedia", newRedfishiDracVirtualMediaAccessDetails)
 }
 
-func newRedfishAccessDetails(parsedURL *url.URL) (AccessDetails, error) {
+func redfishDetails(parsedURL *url.URL, disableCertificateVerification bool) *redfishAccessDetails {
 	return &redfishAccessDetails{
-		bmcType:  parsedURL.Scheme,
-		host:     parsedURL.Host,
-		path:     parsedURL.Path,
+		bmcType:                        parsedURL.Scheme,
+		host:                           parsedURL.Host,
+		path:                           parsedURL.Path,
+		disableCertificateVerification: disableCertificateVerification,
+	}
+}
+
+func newRedfishAccessDetails(parsedURL *url.URL, disableCertificateVerification bool) (AccessDetails, error) {
+	return redfishDetails(parsedURL, disableCertificateVerification), nil
+}
+
+func newRedfishVirtualMediaAccessDetails(parsedURL *url.URL, disableCertificateVerification bool) (AccessDetails, error) {
+	return &redfishVirtualMediaAccessDetails{
+		*redfishDetails(parsedURL, disableCertificateVerification),
+	}, nil
+}
+
+func newRedfishiDracVirtualMediaAccessDetails(parsedURL *url.URL, disableCertificateVerification bool) (AccessDetails, error) {
+	return &redfishiDracVirtualMediaAccessDetails{
+		*redfishDetails(parsedURL, disableCertificateVerification),
 	}, nil
 }
 
 type redfishAccessDetails struct {
-	bmcType  string
-	host     string
-	path     string
+	bmcType                        string
+	host                           string
+	path                           string
+	disableCertificateVerification bool
+}
+
+type redfishVirtualMediaAccessDetails struct {
+	redfishAccessDetails
+}
+
+type redfishiDracVirtualMediaAccessDetails struct {
+	redfishAccessDetails
 }
 
 const redfishDefaultScheme = "https"
@@ -41,6 +70,10 @@ func (a *redfishAccessDetails) NeedsMAC() bool {
 
 func (a *redfishAccessDetails) Driver() string {
 	return "redfish"
+}
+
+func (a *redfishAccessDetails) DisableCertificateVerification() bool {
+	return a.disableCertificateVerification
 }
 
 // DriverInfo returns a data structure to pass as the DriverInfo
@@ -64,6 +97,10 @@ func (a *redfishAccessDetails) DriverInfo(bmcCreds Credentials) map[string]inter
 		"redfish_username": bmcCreds.Username,
 		"redfish_password": bmcCreds.Password,
 		"redfish_address": strings.Join(redfishAddress, ""),
+	}
+
+	if a.disableCertificateVerification {
+		result["redfish_verify_ca"] = false
 	}
 
 	return result
